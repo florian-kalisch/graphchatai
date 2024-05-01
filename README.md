@@ -1,4 +1,4 @@
-### Detailed Feature Description for GraphChatAI
+### GraphChatAI
 
 ![graphchatai](https://github.com/florian-kalisch/graphchatai/assets/5501881/1e207b95-ba82-4ad6-9e5d-3f4be1d7a07e)
 
