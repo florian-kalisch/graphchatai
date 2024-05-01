@@ -1,5 +1,7 @@
 ### Detailed Feature Description for GraphChatAI
 
+![graphchatai](https://github.com/florian-kalisch/graphchatai/assets/5501881/1e207b95-ba82-4ad6-9e5d-3f4be1d7a07e)
+
 #### Introduction
 GraphChatAI is a versatile tool designed to interact with the OpenAI™ API in a non-linear and graph-based manner. This tool enhances creative brainstorming, structured knowledge exploration, and complex conversation management by leveraging a graph interface to control and visualize the flow of AI-generated content.
 
