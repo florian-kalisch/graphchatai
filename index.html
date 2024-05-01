@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Non-Linear AI conversations</title>
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-flow-renderer/10.3.17/umd/index.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/react-flow-renderer/10.3.17/style.min.css" />
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .react-flow-wrapper {
+      flex-grow: 1;
+      position: relative;
+    }
+
+    .updatenode__controls {
+      right: 10px;
+      top: 10px;
+    }
+
+    .updatenode__controls label,
+    .updatenode__controls textarea {
+      display: block;
+      margin: 5px 0;
+      font-size: 16px;
+    }
+
+    .addNode__controls {
+      left: 10px;
+      bottom: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 5px;
+      border-radius: 5px;
+    }
+
+    @media (max-width: 600px) {
+      .addNode__controls {
+        bottom: 10px;
+        width: 100%;
+        left: 0;
+        justify-content: center;
+      }
+    }
+
+    .addNode__controls button,
+    .addNode__controls input {
+      cursor: pointer;
+      padding: 5px 10px;
+      font-size: 12px;
+      margin-right: 5px;
+    }
+
+    .react-flow__edge-path {
+      stroke: #000;
+      stroke-width: 2px;
+      fill: none;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0s, opacity 0.5s linear;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 5px;
+      width: 50%;
+      min-width: 300px;
+    }
+
+    .modal.show {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .updatenode__controls,
+    .addNode__controls {
+      position: absolute;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <script>
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const { React, ReactDOM, ReactFlow } = window;
+      const Flow = ReactFlow.default || ReactFlow;
+      const { useState, useCallback, useEffect } = React;
+      const { createRoot } = ReactDOM;
+      const dagre = window.dagre;
+
+      const nodeWidth = 172;
+      const nodeHeight = 36;
+
+      const getLayoutedElements = (nodes, edges, direction = 'TB') => {
+        const isHorizontal = direction === 'LR';
+        const dagreGraph = new dagre.graphlib.Graph();
+        dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+        // Adjust these values to increase the spacing
+        const ranksep = 100; // Increase distance between ranks (levels)
+        const nodesep = 100; // Increase distance between nodes within the same rank
+
+        dagreGraph.setGraph({ rankdir: direction, ranksep: ranksep, nodesep: nodesep });
+
+        nodes.forEach((node) => {
+          // Adjust node width based on the length of the text
+          const nodeTextLength = node.data.label.length;
+          const width = Math.max(nodeWidth, nodeTextLength * 2 + 20); // Calculate width dynamically
+          const height = nodeHeight + (nodeTextLength / 20) * 5; // Adjust height if text is very long
+
+          dagreGraph.setNode(node.id, { width: width, height: height });
+        });
+
+        edges.forEach((edge) => {
+          dagreGraph.setEdge(edge.source, edge.target);
+        });
+
+        dagre.layout(dagreGraph);
+
+        nodes.forEach((node) => {
+          const nodeWithPosition = dagreGraph.node(node.id);
+          node.targetPosition = isHorizontal ? 'left' : 'top';
+          node.sourcePosition = isHorizontal ? 'right' : 'bottom';
+
+          // We are shifting the dagre node position (anchor=center center) to the top left
+          // so it matches the React Flow node anchor point (top left).
+          node.position = {
+            x: nodeWithPosition.x - nodeWidth / 2,
+            y: nodeWithPosition.y - nodeHeight / 2,
+          };
+
+          return node;
+        });
+
+        return { nodes, edges };
+      };
+
+      function Modal({ isOpen, onClose, initialValue, onSave }) {
+        const [value, setValue] = React.useState(initialValue);
+
+        React.useEffect(() => {
+          setValue(initialValue); // Update local state when initialValue changes
+        }, [initialValue]);
+
+        const handleChange = (event) => {
+          setValue(event.target.value);
+        };
+
+        const handleSave = () => {
+          onSave(value);
+          onClose(); // Close modal after saving
+        };
+
+        if (!isOpen) return null;
+
+        return React.createElement('div', { className: 'modal show', onClick: onClose },
+          React.createElement('div', { className: 'modal-content', onClick: e => e.stopPropagation() },
+            React.createElement('textarea', {
+              value: value,
+              onChange: handleChange,
+              style: { width: '100%', height: '50vh' }
+            }),
+            React.createElement('button', { onClick: handleSave, style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/floppy-fill.svg', alt: 'Save', style: { width: '24px', height: '24px' } })
+            )
+          )
+        );
+      }
+
+      function TimedModal({ isOpen, message, duration, onClose }) {
+        React.useEffect(() => {
+          if (isOpen && duration > 0) {
+            const timer = setTimeout(() => {
+              onClose();
+            }, duration);
+            return () => clearTimeout(timer);
+          }
+        }, [isOpen, duration, onClose]);
+
+        if (!isOpen) return null;
+
+        return React.createElement('div', { className: 'modal show', onClick: onClose },
+          React.createElement('div', { className: 'modal-content', onClick: e => e.stopPropagation() },
+            React.createElement('p', {}, message)
+          )
+        );
+      }
+
+
+      function SimpleFlowComponent() {
+        const initialNodes = [{ "id": "nodeo7xarCGkhsqY", "type": "default", "data": { "role": 'user', "label": "Start by entering OpenAI™ API Key below, then clicking the trash icon (this can erase all or selected nodes), adding a new node (prompt) with plus icon. Then click the chat icon.", "longLabel": "Start by entering OpenAI™ API Key below, then clicking the trash icon (this can erase all or selected nodes), adding a new node (prompt) with plus icon. Then click the chat icon." }, "position": { "x": 962.3181013181342, "y": -219.50778678338372 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10, "backgroundColor": "#ff9900" } }, { "id": "node9p5Kmrsy2clh", "type": "default", "data": { "role": 'user', "label": "Purpose of this tool is to enable non-linear AI chats and generative (knowledge) graphs.", "longLabel": "Purpose of this tool is to enable non-linear AI chats and generative (knowledge) graphs." }, "position": { "x": -25.07037388119798, "y": -231.98014610469255 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10, backgroundColor: ' #ffff66' } }, { "id": "nodewB7o9iwVGAST", "type": "default", "data": { "role": 'user', "label": "Linear chats limit creativity and fill / overload the context window with possibly irrelevant information.", "longLabel": "Linear chats limit creativity and fill / overload the context window with possibly irrelevant information." }, "position": { "x": 215.4494730058201, "y": -82.8059436042517 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeHfwmVumih-Yp", "type": "default", "data": { "role": 'user', "label": "Non-linear chats allow multiple threads of conversation and the control over the context window.", "longLabel": "Non-linear chats allow multiple threads of conversation and the control over the context window." }, "position": { "x": 80.56725786734717, "y": 20.911570751895937 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeZd9jGwBHTSgN", "type": "default", "data": { "role": 'user', "label": "Generative graphs allow creative brainstorming and structured knowledge.", "longLabel": "Generative graphs allow creative brainstorming and structured knowledge." }, "position": { "x": -25.23536048597883, "y": 148.2609238221026 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodef6FKXVQ5UL2g", "type": "default", "data": { "role": 'user', "label": "This is a node. It represents a command / message you usually would send to an AI as part of one chat thread.", "longLabel": "This is a node. It represents a command / message you usually would send to an AI as part of one chat thread." }, "position": { "x": 439.6286180816706, "y": -266.1150242472222 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10, backgroundColor: '#99ccff' } }, { "id": "nodeZ0GK9_U3mp2G", "type": "default", "data": { "role": 'user', "label": "Clicking on this node makes it selected / focused. Focused nodes are editable (upper right texarea) with optional modal textarea (Pen). Clicking on white background makes node deselected.", "longLabel": "Clicking on this node makes it selected / focused. Focused nodes are editable (upper right texarea) with optional modal textarea (Pen). Clicking on white background makes node deselected." }, "position": { "x": 439.7539874977954, "y": -160.2321398535903 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeBErinlYtqr8j", "type": "default", "data": { "role": 'user', "label": "Clicking on the chat icon will send the selected node text as a prompt to OpenAI™.", "longLabel": "Clicking on the chat icon will send the selected node text as a prompt to OpenAI™." }, "position": { "x": 439.75398749779544, "y": -14.502467783560045 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "node0oIDlDVY96tF", "type": "default", "data": { "role": 'user', "label": "When using the \"answer\" mode / default mode (first select box beneath) then a new node with the AI answer is appended.", "longLabel": "When using the \"answer\" mode / default mode (first select box beneath) then a new node with the AI answer is appended." }, "position": { "x": 439.9073880336042, "y": 85.4298073227198 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "node664Ok_vQYNMR", "type": "default", "data": { "role": 'user', "label": "The \"brainstorm\" mode leads to multiple node answers.", "longLabel": "The \"brainstorm\" mode leads to multiple node answers." }, "position": { "x": 600.2321398535904, "y": 211.61968100017637 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeubieafo0pRay", "type": "default", "data": { "role": 'user', "label": "The \"knowledge graph\" mode gives \"predicate\", \"object\" answers with \"predicate\" as edge label.", "longLabel": "The \"knowledge graph\" mode gives \"predicate\", \"object\" answers with \"predicate\" as edge label." }, "position": { "x": 270.85267832113254, "y": 213.74240142882337 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeEMKJCQq4xQbX", "type": "default", "data": { "role": 'user', "label": "Nodes can have inputs (upper black circle). Input nodes will not be used when \"No Node Input\" is selected (default), but merged adjacent or full path inputs are possible. Per default the chat icon calls OpenAI™ with the selected node text as the prompt. Additionally input nodes can be used to provid...", "longLabel": "Nodes can have inputs (upper black circle). Input nodes will not be used when \"No Node Input\" is selected (default), but merged adjacent or full path inputs are possible. Per default the chat icon calls OpenAI™ with the selected node text as the prompt. Additionally input nodes can be used to provide selective context." }, "position": { "x": 711.4772948884288, "y": -59.83966313988409 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeMPeVsjJXwYtZ", "type": "default", "data": { "role": 'user', "label": "With this tool you can have multiple chat threads.", "longLabel": "With this tool you can have multiple chat threads." }, "position": { "x": 711.6735332452821, "y": -160.07873931778153 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "node2nh2-DqOl0gJ", "type": "default", "data": { "role": 'user', "label": "You will get a new node appended with the AI answer.", "longLabel": "You will get a new node appended with the AI answer." }, "position": { "x": 962.5870001358277, "y": -77.21390328276642 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeNZYCcRyJEDgf", "type": "default", "data": { "role": 'user', "label": "You can save and load your work temporary to the browser with the save and load icons.", "longLabel": "You can save and load your work temporary to the browser with the save and load icons." }, "position": { "x": 962.7404006716365, "y": 24.031251752072304 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeCYQ1TSyI8jg7", "type": "default", "data": { "role": 'user', "label": "Now start your new way of prompting and unleash your full creativity.", "longLabel": "Now start your new way of prompting and unleash your full creativity." }, "position": { "x": 962.8938012074451, "y": 141.68740589389643 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }];
+        const initialEdges = [{ "id": "enode9p5Kmrsy2clh-nodewB7o9iwVGAST", "source": "node9p5Kmrsy2clh", "target": "nodewB7o9iwVGAST", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode9p5Kmrsy2clh-nodeHfwmVumih-Yp", "source": "node9p5Kmrsy2clh", "target": "nodeHfwmVumih-Yp", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode9p5Kmrsy2clh-nodeZd9jGwBHTSgN", "source": "node9p5Kmrsy2clh", "target": "nodeZd9jGwBHTSgN", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodef6FKXVQ5UL2g-nodeZ0GK9_U3mp2G", "source": "nodef6FKXVQ5UL2g", "target": "nodeZ0GK9_U3mp2G", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeZ0GK9_U3mp2G-nodeBErinlYtqr8j", "source": "nodeZ0GK9_U3mp2G", "target": "nodeBErinlYtqr8j", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeBErinlYtqr8j-node0oIDlDVY96tF", "source": "nodeBErinlYtqr8j", "target": "node0oIDlDVY96tF", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode0oIDlDVY96tF-node664Ok_vQYNMR", "source": "node0oIDlDVY96tF", "target": "node664Ok_vQYNMR", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode0oIDlDVY96tF-nodeubieafo0pRay", "source": "node0oIDlDVY96tF", "target": "nodeubieafo0pRay", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "label": "another_mode_option", "style": { "stroke": "black" } }, { "id": "enodef6FKXVQ5UL2g-nodeMPeVsjJXwYtZ", "source": "nodef6FKXVQ5UL2g", "target": "nodeMPeVsjJXwYtZ", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeMPeVsjJXwYtZ-nodeEMKJCQq4xQbX", "source": "nodeMPeVsjJXwYtZ", "target": "nodeEMKJCQq4xQbX", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeo7xarCGkhsqY-node2nh2-DqOl0gJ", "source": "nodeo7xarCGkhsqY", "target": "node2nh2-DqOl0gJ", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode2nh2-DqOl0gJ-nodeNZYCcRyJEDgf", "source": "node2nh2-DqOl0gJ", "target": "nodeNZYCcRyJEDgf", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeNZYCcRyJEDgf-nodeCYQ1TSyI8jg7", "source": "nodeNZYCcRyJEDgf", "target": "nodeCYQ1TSyI8jg7", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }];
+        const [nodes, setNodes] = useState(initialNodes);
+        const [edges, setEdges] = useState(initialEdges);
+        const [selectedNodeId, setSelectedNodeId] = useState(null);
+        const [apiKey, setApiKey] = useState('');
+        const [model, setModel] = useState('gpt-3.5-turbo');
+        const [mode, setMode] = useState('answer');
+        const [choices, setChoices] = useState(1);
+        const [isModalOpen, setIsModalOpen] = useState(false);
+        const [modalValue, setModalValue] = useState('');
+        const [selectedEdgeId, setSelectedEdgeId] = useState(null);
+        const [edgeLabel, setEdgeLabel] = useState('');
+        const [inputMode, setInputMode] = useState('none');
+        const [backgroundColor, setBackgroundColor] = useState('white');
+        const [edgeType, setEdgeType] = useState('smoothstep');
+        const [longLabel, setLongLabel] = useState('');
+
+        const [isTimedModalOpen, setIsTimedModalOpen] = useState(false);
+        const [timedMessage, setTimedMessage] = useState('');
+        const [modalDuration, setModalDuration] = useState(3000);
+
+        const onNodeClick = useCallback((event, node) => {
+          setSelectedNodeId(node.id);
+          setSelectedEdgeId(null);
+          setBackgroundColor(node.style.backgroundColor || 'white');
+          setLongLabel(node.data.longLabel);
+        }, []);
+
+        const showTimedModal = useCallback((message, duration) => {
+          setTimedMessage(message);
+          setModalDuration(duration);
+          setIsTimedModalOpen(true);
+        }, []);
+
+        const closeTimedModal = useCallback(() => {
+          setIsTimedModalOpen(false);
+        }, []);
+
+        const updateNodeLabel = useCallback((evt) => {
+          const updatedNodes = nodes.map(node => {
+            if (node.id === selectedNodeId) {
+              const updatedLongLabel = evt.target.value;
+              const updatedLabel = updatedLongLabel.length > 400 ? updatedLongLabel.substring(0, 400) + '...' : updatedLongLabel;
+              return {
+                ...node,
+                data: { ...node.data, label: updatedLabel, longLabel: updatedLongLabel }
+              };
+            }
+            return node;
+          });
+          setNodes(updatedNodes);
+        }, [nodes, selectedNodeId]);
+
+        const updateBackgroundColor = useCallback((evt) => {
+          const updatedNodes = nodes.map(node => {
+            if (node.id === selectedNodeId) {
+              const nodeBackgroundColor = evt.target.value;
+              return {
+                ...node,
+                style: { ...node.style, backgroundColor: nodeBackgroundColor }
+              };
+            }
+            return node;
+          });
+          setNodes(updatedNodes);
+        }, [nodes, selectedNodeId]);
+
+        useEffect(() => {
+          const visited = localStorage.getItem('visited');
+          if (visited) {
+            setNodes([]);
+            setEdges([]);
+          } else {
+            localStorage.setItem('visited', 'true');
+          }
+        }, []);
+
+        const addNode = useCallback(() => {
+          const newNodeId = `node${generateCryptoId()}`;
+          const newNode = {
+            id: newNodeId,
+            type: 'default',
+            data: { label: ``, longLabel: ``, role: 'user' },
+            position: {
+              x: 100 + (nodes.length * 10) % (window.innerWidth * 0.5),
+              y: 100 + (nodes.length * 10) % (window.innerHeight * 0.5)
+            },
+            style: { border: '2px solid #333', padding: '10px', fontSize: 10 }
+          };
+          setNodes(prevNodes => [...prevNodes, newNode]);
+        }, [nodes]);
+
+        const onConnect = useCallback((params) => {
+          setEdges(prevEdges => [
+            ...prevEdges,
+            {
+              id: `e${params.source}-${params.target}`,
+              source: params.source,
+              target: params.target,
+              markerEnd: {
+                type: 'arrowclosed',
+                color: '#000', // Optional: set the color of the arrow
+              },
+            }
+          ]);
+        }, []);
+
+        const onLayout = useCallback(
+          (direction) => {
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+              nodes,
+              edges,
+              direction
+            );
+
+            setNodes([...layoutedNodes]);
+            setEdges([...layoutedEdges]);
+          },
+          [nodes, edges]
+        );
+
+        const onNodesChange = useCallback((changes) => {
+          setNodes((nds) => ReactFlow.applyNodeChanges(changes, nds));
+        }, []);
+
+        const onEdgesChange = useCallback((changes) => {
+          setEdges((eds) => ReactFlow.applyEdgeChanges(changes, eds));
+        }, []);
+
+        const onPaneClick = useCallback(() => {
+          setSelectedNodeId(null);
+          setSelectedEdgeId(null);
+        }, []);
+
+        const handleSave = useCallback(() => {
+          const data = {
+            nodes: nodes,
+            edges: edges
+          };
+          localStorage.setItem('flowData', JSON.stringify(data));
+        }, [nodes, edges]);
+
+        // Load nodes and edges from localStorage
+        const handleLoad = useCallback(() => {
+          setSelectedNodeId(null);
+          setSelectedEdgeId(null);
+          const data = JSON.parse(localStorage.getItem('flowData'));
+          if (data) {
+            setNodes(data.nodes);
+            setEdges(data.edges);
+          }
+        }, []);
+
+        async function fetchChatCompletion(openaiApiKey, prompt, model = 'gpt-3.5-turbo', mode = 'answer', maxTokens = 3072, temperature = 1) {
+          const url = "https://api.openai.com/v1/chat/completions";
+          const headers = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openaiApiKey}`
+          };
+
+          let responseFormat = null;
+          let systemPrompt = "You are a helpful assistant. Please give short answers except you are asked to give long answers.";
+
+          if (mode === "brainstorm") {
+            responseFormat = { "type": "json_object" };
+            systemPrompt = 'You are a helpful brainstorming assistant answering as an json of ideas like {"1": "idea 1", "n": "idea n"}. Make sure to answer in the specified json format.';
+          }
+
+          if (mode === "knowledge graph") {
+            responseFormat = { "type": "json_object" };
+            systemPrompt = 'You are a helpful assistant that creates knowledge graphs. The user provides you with the subject and you answer as an json object like {"subject": "", "edges": [{"predicate": "short_predicate_with_underscore", "object": ""}]} and make sure to only answer as json object in the defined format';
+          }
+
+          const body = {
+            model: model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...prompt
+            ],
+            response_format: responseFormat,
+            max_tokens: maxTokens,
+            temperature: temperature,
+            n: parseInt(choices, 10)
+          };
+
+          try {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: headers,
+              body: JSON.stringify(body)
+            });
+            if (!response.ok) {
+              throw new Error('Failed to fetch data: ' + response.status);
+              showTimedModal('Failed to fetch data: ' + response.status, 5000);
+            }
+            const data = await response.json();
+
+            return {
+              choices: data.choices,
+              answer: data.choices[0]['message']['content'],
+              usage: data.usage
+            };
+          } catch (error) {
+            console.error('Error:', error);
+            showTimedModal('There has been an error. Please view the console output.', 5000);
+            return null;
+          }
+        }
+
+        function generateCryptoId(length = 12) {
+          const array = new Uint8Array(length);
+          window.crypto.getRandomValues(array);
+          return btoa(String.fromCharCode.apply(null, array)).replace(/\+/g, '-').replace(/\//g, '_').substring(0, length);
+        }
+
+        const handleAskClick = useCallback(async () => {
+
+          if (!selectedNodeId) {
+            showTimedModal('No node is selected and therefore no prompt can be sent.', 3000);
+            return;
+          }
+
+          if (!apiKey) {
+            showTimedModal('Please enter an API key.', 3000);
+            return;
+          }
+
+          if( (['brainstorm', 'knowledge graph'].includes(mode) && (['gpt-3.5-turbo-16k', 'gpt-4'].includes(model))) ) {
+            showTimedModal('Mode is not supported by the ai model.', 5000);
+            return; 
+          }
+
+          const selectedNode = nodes.find(n => n.id === selectedNodeId);
+          const inputEdges = edges.filter(e => e.target === selectedNodeId);
+
+          let prompt = [];
+
+          if (inputMode === "parents") {
+            const inputNodes = nodes.filter(n => inputEdges.some(e => e.source === n.id));
+            const inputLabels = inputNodes.map(n => ({
+              "role": "user",
+              "content": n.data.label
+            }));
+
+            prompt.push(...inputLabels);
+
+            prompt.push({
+              "role": "user",
+              "content": selectedNode.data.label
+            },)
+
+          } else if (inputMode === "full") {
+            let currentNodeId = selectedNodeId;
+            while (currentNodeId) {
+              const currentNode = nodes.find(n => n.id === currentNodeId);
+
+              if (currentNode) {
+                prompt.unshift({
+                  "role": currentNode.data.role,
+                  "content": currentNode.data.longLabel
+                });
+              }
+
+              // Find the incoming edges to the current node
+              const incomingEdge = edges.filter(e => e.target === currentNodeId);
+
+              if (incomingEdge && incomingEdge.length != 0) {
+
+                if (incomingEdge.length > 1) {
+                  showTimedModal('Please ensure that in "Full Path" mode every node in this path has only one parent.', 5000);
+                  return;
+                }
+
+                currentNodeId = incomingEdge[0].source; // Move to the source node of the incoming edge
+              } else {
+                currentNodeId = null; // No incoming edges, stop the loop
+              }
+            }
+          } else {
+            prompt.push({
+              "role": "user",
+              "content": selectedNode.data.label
+            },)
+          }
+
+          const response = await fetchChatCompletion(apiKey, prompt, model, mode);
+          if (response && response.choices) {
+
+            let yGap = 0;
+            let xGap = 0;
+
+            response.choices.forEach(answer => {
+
+              let innerAnswers = [];
+
+              if (mode === "answer") {
+                innerAnswers = [{ node: answer['message']['content'] }];
+
+              } else if (mode === "brainstorm") {
+                let contentObject = JSON.parse(answer['message']['content']);
+                innerAnswers = Object.values(contentObject).map(value => ({ node: value }));
+
+              } else if (mode === "knowledge graph") {
+                let contentObject = JSON.parse(answer['message']['content']);
+                innerAnswers = contentObject['edges'].map(value => ({ node: value['object'], edge: value['predicate'] }));
+              }
+
+              innerAnswers.forEach(innerAnswer => {
+                const newNodeLabel = innerAnswer['node'];
+                const newNodeId = `node${generateCryptoId()}`;
+                const newNode = {
+                  id: newNodeId,
+                  type: 'default',
+                  data: { longLabel: newNodeLabel, label: newNodeLabel.length > 400 ? newNodeLabel.substring(0, 400) + '...' : newNodeLabel, role: 'system' },
+                  position: {
+                    x: selectedNode.position.x + 100 + xGap,
+                    y: selectedNode.position.y + 100 + yGap
+                  },
+                  style: { border: '2px solid #333', padding: '10px', fontSize: 10 }
+                };
+
+                xGap += 50;
+
+                setNodes(prevNodes => [...prevNodes, newNode]);
+                setEdges(prevEdges => [...prevEdges, {
+                  id: `e${generateCryptoId()}`, source: selectedNodeId, target: newNodeId, label: innerAnswer['edge'] ? innerAnswer['edge'] : "", "markerEnd": { "type": "arrowclosed", "color": "#000" },
+                  "style": { "stroke": "black" }
+                }]);
+              })
+
+              yGap += 50;
+            });
+          }
+        }, [inputMode, mode, model, nodes, edges, selectedNodeId, apiKey, showTimedModal]);
+
+        const deleteSelected = useCallback(() => {
+          if (selectedNodeId) {
+            // Remove the selected node and any edges connected to it
+            setNodes(prevNodes => prevNodes.filter(node => node.id !== selectedNodeId));
+            setEdges(prevEdges => prevEdges.filter(edge => edge.source !== selectedNodeId && edge.target !== selectedNodeId));
+            setSelectedNodeId(null); // Clear selection
+          } else {
+            setEdges([]);
+            setNodes([]);
+          }
+        }, [selectedNodeId]);
+
+        const handleKeyDown = useCallback((event) => {
+          if (event.keyCode === 46) {
+            deleteSelected();
+          }
+        }, [deleteSelected]);
+
+        const openModal = useCallback(() => {
+          setIsModalOpen(true);
+          const currentNode = nodes.find(node => node.id === selectedNodeId);
+          if (currentNode) {
+            setModalValue(currentNode.data.longLabel);
+          }
+        }, [nodes, selectedNodeId]);
+
+        const closeModal = useCallback(() => {
+          setIsModalOpen(false);
+        }, []);
+
+        const saveModalValue = useCallback((newValue) => {
+          const updatedLabel = newValue.length > 400 ? newValue.substring(0, 400) + '...' : newValue;
+          updateNodeLabel({ target: { value: newValue } });
+        }, [updateNodeLabel]);
+
+        const handleModalChange = useCallback((event) => {
+          updateNodeLabel(event);
+        }, [updateNodeLabel]);
+
+        const onEdgeClick = useCallback((event, edge) => {
+          setSelectedEdgeId(edge.id);
+          setSelectedNodeId(null);
+          setEdgeLabel(edge.label || ''); // Set the label or default to an empty string
+        }, []);
+
+        const updateEdgeLabel = useCallback((edgeId, newLabel) => {
+          setEdges((prevEdges) => prevEdges.map(edge => {
+            if (edge.id === edgeId) {
+              return { ...edge, label: newLabel };
+            }
+            return edge;
+          }));
+        }, []);
+
+        return React.createElement('div', { className: 'react-flow-wrapper' },
+          React.createElement(Flow, {
+            nodes, edges: edges.map(edge => ({ ...edge, label: edge.label })), onNodesChange, onEdgesChange, onConnect, onNodeClick, onPaneClick,
+            fitView: true, defaultEdgeOptions: { type: edgeType }, onEdgeClick, key: edgeType
+          }),
+          selectedNodeId && React.createElement('div', { className: 'updatenode__controls' },
+            React.createElement('label', {}, `Update Label of Node`),
+            React.createElement('textarea', {
+              value: nodes.find(node => node.id === selectedNodeId).data.longLabel,
+              onChange: (e) => {
+                setLongLabel(e.target.value);
+                updateNodeLabel(e);
+              },
+              rows: 10
+            }),
+            React.createElement('button', { onClick: openModal, style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/pencil-fill.svg', alt: 'Add Node', style: { width: '24px', height: '24px' } })
+            ),
+            React.createElement('label', {}, 'Background color'),
+            React.createElement('input', {
+              type: 'text',
+              value: backgroundColor,
+              onChange: (e) => {
+                setBackgroundColor(e.target.value);
+              },
+              onBlur: updateBackgroundColor
+            })
+          ),
+          selectedEdgeId && React.createElement('div', { className: 'updatenode__controls' },
+            React.createElement('label', {}, 'Update Edge Label'),
+            React.createElement('input', {
+              type: 'text',
+              value: edgeLabel,
+              onChange: (e) => {
+                setEdgeLabel(e.target.value);
+                updateEdgeLabel(selectedEdgeId, e.target.value);
+              }
+            })
+          ),
+          isTimedModalOpen && React.createElement(TimedModal, {
+            isOpen: isTimedModalOpen,
+            message: timedMessage,
+            duration: modalDuration,
+            onClose: closeTimedModal
+          }),
+          React.createElement('div', { className: 'addNode__controls' },
+            React.createElement('button', { onClick: addNode, style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/plus-circle-fill.svg', alt: 'Add Node', style: { width: '24px', height: '24px' } })
+            ),
+            React.createElement('button', { onClick: handleAskClick, style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/chat-dots-fill.svg', alt: 'Ask AI', style: { width: '24px', height: '24px' } })
+            ),
+            React.createElement('button', { onClick: deleteSelected, style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/trash-fill.svg', alt: 'Delete node', style: { width: '24px', height: '24px' } })
+            ),
+            React.createElement('button', { onClick: handleSave, style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/floppy-fill.svg', alt: 'Save', style: { width: '24px', height: '24px' } })
+            ),
+            React.createElement('button', { onClick: handleLoad, style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/file-earmark-arrow-up-fill.svg', alt: 'Load', style: { width: '24px', height: '24px' } })
+            ),
+            React.createElement('button', { onClick: () => onLayout('TB'), style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/diagram-3-fill.svg', alt: 'Vertical Layout', style: { width: '24px', height: '24px' } })
+            ),
+            React.createElement('button', { onClick: () => onLayout('LR'), style: { border: 'none', background: 'none' } },
+              React.createElement('img', { src: './images/diagram-3-fill.svg', alt: 'Horizontal Layout', style: { width: '24px', height: '24px', transform: 'rotate(-90deg)' } })
+            ),
+            React.createElement('select', { value: mode, onChange: (e) => setMode(e.target.value) },
+              React.createElement('option', { value: 'answer' }, 'answer'),
+              React.createElement('option', { value: 'brainstorm' }, 'brainstorm'),
+              React.createElement('option', { value: 'knowledge graph' }, 'knowledge graph')
+            ),
+            React.createElement('select', { value: inputMode, onChange: (e) => setInputMode(e.target.value) },
+              React.createElement('option', { value: "none" }, 'No Node Input'),
+              React.createElement('option', { value: "parents" }, 'Merge Parents'),
+              React.createElement('option', { value: "full" }, 'Full Path')
+            ),
+            React.createElement('select', { value: choices, onChange: (e) => setChoices(e.target.value) },
+              React.createElement('option', { value: 1 }, '1 Answer'),
+              React.createElement('option', { value: 2 }, '2 Answers'),
+              React.createElement('option', { value: 3 }, '3 Answers')
+            ),
+            React.createElement('select', { value: model, onChange: (e) => setModel(e.target.value) },
+              React.createElement('option', { value: 'gpt-4' }, 'GPT-4'),
+              React.createElement('option', { value: 'gpt-4-turbo' }, 'GPT-4 Turbo'),
+              React.createElement('option', { value: 'gpt-3.5-turbo' }, 'GPT-3.5 Turbo'),
+              React.createElement('option', { value: 'gpt-3.5-turbo-16k' }, 'GPT-3.5 Turbo 16k')
+            ),
+            React.createElement('select', { value: edgeType, onChange: (e) => setEdgeType(e.target.value) },
+              React.createElement('option', { value: "default" }, 'default'),
+              React.createElement('option', { value: "smoothstep" }, 'smoothstep'),
+              React.createElement('option', { value: "straight" }, 'straight')
+            ),
+            React.createElement('input', {
+              type: 'password',
+              placeholder: 'API Key',
+              value: apiKey,
+              onChange: (e) => setApiKey(e.target.value)
+            })
+          ),
+          isModalOpen && React.createElement(Modal, {
+            isOpen: isModalOpen,
+            onClose: closeModal,
+            initialValue: modalValue,
+            onSave: saveModalValue
+          },
+            React.createElement('textarea', {
+              value: nodes.find(node => node.id === selectedNodeId)?.data.label,
+              onChange: handleModalChange,
+              style: { width: '100%', height: '200px' }
+            })
+          )
+        );
+      }
+
+      const root = createRoot(document.getElementById('app'));
+      root.render(React.createElement(SimpleFlowComponent));
+    });
+  </script>
+</body>
+
+</html>
