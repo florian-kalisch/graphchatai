@@ -8,6 +8,7 @@
   <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.min.js"></script>
+  <script src="https://unpkg.com/zustand@4.1.4/umd/vanilla.production.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-flow-renderer/10.3.17/umd/index.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/react-flow-renderer/10.3.17/style.min.css" />
@@ -27,8 +28,8 @@
     }
 
     .react-flow-wrapper {
-      flex-grow: 1;
-      position: relative;
+      width: 100%;
+      height: calc(100% - 40px);
     }
 
     .updatenode__controls {
@@ -91,7 +92,7 @@
     }
 
     .modal-content {
-      background: white;
+      background: rgb(250, 250, 250);
       padding: 20px;
       border-radius: 5px;
       width: 50%;
@@ -119,6 +120,8 @@
     document.addEventListener('DOMContentLoaded', function () {
       const { React, ReactDOM, ReactFlow } = window;
       const Flow = ReactFlow.default || ReactFlow;
+      const ReactFlowProvider = window.ReactFlow.ReactFlowProvider;
+      const { useStoreApi } = ReactFlow;
       const { useState, useCallback, useEffect } = React;
       const { createRoot } = ReactDOM;
       const dagre = window.dagre;
@@ -221,29 +224,51 @@
         );
       }
 
+      function App() {
+
+        if (!ReactFlowProvider) {
+          console.error('ReactFlowProvider is undefined');
+          return null; // Or handle this case appropriately
+        }
+        return React.createElement(
+          ReactFlowProvider,
+          null,
+          React.createElement('div', { className: 'react-flow-wrapper' },
+            React.createElement(SimpleFlowComponent, null)
+          )
+        );
+      }
+
 
       function SimpleFlowComponent() {
+
         const initialNodes = [{ "id": "nodeo7xarCGkhsqY", "type": "default", "data": { "role": 'user', "label": "Start by entering OpenAI™ API Key below, then clicking the trash icon (this can erase all or selected nodes), adding a new node (prompt) with plus icon. Then click the chat icon.", "longLabel": "Start by entering OpenAI™ API Key below, then clicking the trash icon (this can erase all or selected nodes), adding a new node (prompt) with plus icon. Then click the chat icon." }, "position": { "x": 962.3181013181342, "y": -219.50778678338372 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10, "backgroundColor": "#ff9900" } }, { "id": "node9p5Kmrsy2clh", "type": "default", "data": { "role": 'user', "label": "Purpose of this tool is to enable non-linear AI chats and generative (knowledge) graphs.", "longLabel": "Purpose of this tool is to enable non-linear AI chats and generative (knowledge) graphs." }, "position": { "x": -25.07037388119798, "y": -231.98014610469255 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10, backgroundColor: ' #ffff66' } }, { "id": "nodewB7o9iwVGAST", "type": "default", "data": { "role": 'user', "label": "Linear chats limit creativity and fill / overload the context window with possibly irrelevant information.", "longLabel": "Linear chats limit creativity and fill / overload the context window with possibly irrelevant information." }, "position": { "x": 215.4494730058201, "y": -82.8059436042517 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeHfwmVumih-Yp", "type": "default", "data": { "role": 'user', "label": "Non-linear chats allow multiple threads of conversation and the control over the context window.", "longLabel": "Non-linear chats allow multiple threads of conversation and the control over the context window." }, "position": { "x": 80.56725786734717, "y": 20.911570751895937 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeZd9jGwBHTSgN", "type": "default", "data": { "role": 'user', "label": "Generative graphs allow creative brainstorming and structured knowledge.", "longLabel": "Generative graphs allow creative brainstorming and structured knowledge." }, "position": { "x": -25.23536048597883, "y": 148.2609238221026 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodef6FKXVQ5UL2g", "type": "default", "data": { "role": 'user', "label": "This is a node. It represents a command / message you usually would send to an AI as part of one chat thread.", "longLabel": "This is a node. It represents a command / message you usually would send to an AI as part of one chat thread." }, "position": { "x": 439.6286180816706, "y": -266.1150242472222 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10, backgroundColor: '#99ccff' } }, { "id": "nodeZ0GK9_U3mp2G", "type": "default", "data": { "role": 'user', "label": "Clicking on this node makes it selected / focused. Focused nodes are editable (upper right texarea) with optional modal textarea (Pen). Clicking on white background makes node deselected.", "longLabel": "Clicking on this node makes it selected / focused. Focused nodes are editable (upper right texarea) with optional modal textarea (Pen). Clicking on white background makes node deselected." }, "position": { "x": 439.7539874977954, "y": -160.2321398535903 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeBErinlYtqr8j", "type": "default", "data": { "role": 'user', "label": "Clicking on the chat icon will send the selected node text as a prompt to OpenAI™.", "longLabel": "Clicking on the chat icon will send the selected node text as a prompt to OpenAI™." }, "position": { "x": 439.75398749779544, "y": -14.502467783560045 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "node0oIDlDVY96tF", "type": "default", "data": { "role": 'user', "label": "When using the \"answer\" mode / default mode (first select box beneath) then a new node with the AI answer is appended.", "longLabel": "When using the \"answer\" mode / default mode (first select box beneath) then a new node with the AI answer is appended." }, "position": { "x": 439.9073880336042, "y": 85.4298073227198 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "node664Ok_vQYNMR", "type": "default", "data": { "role": 'user', "label": "The \"brainstorm\" mode leads to multiple node answers.", "longLabel": "The \"brainstorm\" mode leads to multiple node answers." }, "position": { "x": 600.2321398535904, "y": 211.61968100017637 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeubieafo0pRay", "type": "default", "data": { "role": 'user', "label": "The \"knowledge graph\" mode gives \"predicate\", \"object\" answers with \"predicate\" as edge label.", "longLabel": "The \"knowledge graph\" mode gives \"predicate\", \"object\" answers with \"predicate\" as edge label." }, "position": { "x": 270.85267832113254, "y": 213.74240142882337 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeEMKJCQq4xQbX", "type": "default", "data": { "role": 'user', "label": "Nodes can have inputs (upper black circle). Input nodes will not be used when \"No Node Input\" is selected (default), but merged adjacent or full path inputs are possible. Per default the chat icon calls OpenAI™ with the selected node text as the prompt. Additionally input nodes can be used to provid...", "longLabel": "Nodes can have inputs (upper black circle). Input nodes will not be used when \"No Node Input\" is selected (default), but merged adjacent or full path inputs are possible. Per default the chat icon calls OpenAI™ with the selected node text as the prompt. Additionally input nodes can be used to provide selective context." }, "position": { "x": 711.4772948884288, "y": -59.83966313988409 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeMPeVsjJXwYtZ", "type": "default", "data": { "role": 'user', "label": "With this tool you can have multiple chat threads.", "longLabel": "With this tool you can have multiple chat threads." }, "position": { "x": 711.6735332452821, "y": -160.07873931778153 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "node2nh2-DqOl0gJ", "type": "default", "data": { "role": 'user', "label": "You will get a new node appended with the AI answer.", "longLabel": "You will get a new node appended with the AI answer." }, "position": { "x": 962.5870001358277, "y": -77.21390328276642 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeNZYCcRyJEDgf", "type": "default", "data": { "role": 'user', "label": "You can save and load your work temporary to the browser with the save and load icons.", "longLabel": "You can save and load your work temporary to the browser with the save and load icons." }, "position": { "x": 962.7404006716365, "y": 24.031251752072304 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }, { "id": "nodeCYQ1TSyI8jg7", "type": "default", "data": { "role": 'user', "label": "Now start your new way of prompting and unleash your full creativity.", "longLabel": "Now start your new way of prompting and unleash your full creativity." }, "position": { "x": 962.8938012074451, "y": 141.68740589389643 }, "style": { "border": "2px solid #333", "padding": "10px", "fontSize": 10 } }];
         const initialEdges = [{ "id": "enode9p5Kmrsy2clh-nodewB7o9iwVGAST", "source": "node9p5Kmrsy2clh", "target": "nodewB7o9iwVGAST", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode9p5Kmrsy2clh-nodeHfwmVumih-Yp", "source": "node9p5Kmrsy2clh", "target": "nodeHfwmVumih-Yp", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode9p5Kmrsy2clh-nodeZd9jGwBHTSgN", "source": "node9p5Kmrsy2clh", "target": "nodeZd9jGwBHTSgN", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodef6FKXVQ5UL2g-nodeZ0GK9_U3mp2G", "source": "nodef6FKXVQ5UL2g", "target": "nodeZ0GK9_U3mp2G", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeZ0GK9_U3mp2G-nodeBErinlYtqr8j", "source": "nodeZ0GK9_U3mp2G", "target": "nodeBErinlYtqr8j", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeBErinlYtqr8j-node0oIDlDVY96tF", "source": "nodeBErinlYtqr8j", "target": "node0oIDlDVY96tF", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode0oIDlDVY96tF-node664Ok_vQYNMR", "source": "node0oIDlDVY96tF", "target": "node664Ok_vQYNMR", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode0oIDlDVY96tF-nodeubieafo0pRay", "source": "node0oIDlDVY96tF", "target": "nodeubieafo0pRay", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "label": "another_mode_option", "style": { "stroke": "black" } }, { "id": "enodef6FKXVQ5UL2g-nodeMPeVsjJXwYtZ", "source": "nodef6FKXVQ5UL2g", "target": "nodeMPeVsjJXwYtZ", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeMPeVsjJXwYtZ-nodeEMKJCQq4xQbX", "source": "nodeMPeVsjJXwYtZ", "target": "nodeEMKJCQq4xQbX", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeo7xarCGkhsqY-node2nh2-DqOl0gJ", "source": "nodeo7xarCGkhsqY", "target": "node2nh2-DqOl0gJ", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enode2nh2-DqOl0gJ-nodeNZYCcRyJEDgf", "source": "node2nh2-DqOl0gJ", "target": "nodeNZYCcRyJEDgf", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }, { "id": "enodeNZYCcRyJEDgf-nodeCYQ1TSyI8jg7", "source": "nodeNZYCcRyJEDgf", "target": "nodeCYQ1TSyI8jg7", "markerEnd": { "type": "arrowclosed", "color": "#000" }, "style": { "stroke": "black" } }];
+
         const [nodes, setNodes] = useState(initialNodes);
         const [edges, setEdges] = useState(initialEdges);
         const [selectedNodeId, setSelectedNodeId] = useState(null);
+        const [selectedEdgeId, setSelectedEdgeId] = useState(null);
         const [apiKey, setApiKey] = useState('');
         const [model, setModel] = useState('gpt-3.5-turbo');
         const [mode, setMode] = useState('answer');
         const [choices, setChoices] = useState(1);
         const [isModalOpen, setIsModalOpen] = useState(false);
         const [modalValue, setModalValue] = useState('');
-        const [selectedEdgeId, setSelectedEdgeId] = useState(null);
         const [edgeLabel, setEdgeLabel] = useState('');
         const [inputMode, setInputMode] = useState('none');
         const [backgroundColor, setBackgroundColor] = useState('white');
         const [edgeType, setEdgeType] = useState('smoothstep');
         const [longLabel, setLongLabel] = useState('');
+        const [dataKey, setDataKey] = useState('flowData');
 
         const [isTimedModalOpen, setIsTimedModalOpen] = useState(false);
         const [timedMessage, setTimedMessage] = useState('');
         const [modalDuration, setModalDuration] = useState(3000);
+
+        const store = useStoreApi();
+        const transform = store.getState().transform;
+
 
         const onNodeClick = useCallback((event, node) => {
           setSelectedNodeId(node.id);
@@ -302,19 +327,34 @@
         }, []);
 
         const addNode = useCallback(() => {
+          const [x, y, zoom] = transform;
+          const viewportWidth = document.querySelector('.react-flow__renderer').clientWidth;
+          const viewportHeight = document.querySelector('.react-flow__renderer').clientHeight;
+
+          // Calculate the center of the viewport in the React Flow coordinate system
+          // We need to adjust by the current transform and zoom to find the actual center in the flow's coordinates
+          const centerX = (-x + viewportWidth / 2) / zoom;
+          const centerY = (-y + viewportHeight / 2) / zoom;
+
           const newNodeId = `node${generateCryptoId()}`;
           const newNode = {
             id: newNodeId,
             type: 'default',
             data: { label: ``, longLabel: ``, role: 'user' },
             position: {
-              x: 100 + (nodes.length * 10) % (window.innerWidth * 0.5),
-              y: 100 + (nodes.length * 10) % (window.innerHeight * 0.5)
+              x: centerX,
+              y: centerY
             },
-            style: { border: '2px solid #333', padding: '10px', fontSize: 10 }
+            style: {
+              border: '2px solid #333',
+              padding: '10px',
+              fontSize: 10
+            }
           };
           setNodes(prevNodes => [...prevNodes, newNode]);
-        }, [nodes]);
+        }, [nodes, transform]);
+
+
 
         const onConnect = useCallback((params) => {
           setEdges(prevEdges => [
@@ -358,24 +398,84 @@
           setSelectedEdgeId(null);
         }, []);
 
-        const handleSave = useCallback(() => {
+        // Helper function to sanitize the key name
+        function sanitizeKeyName(keyName) {
+          return keyName.replace(/[^a-z0-9]/gi, '_');
+        }
+
+        // Function to save data to localStorage
+        const handleLocalStorageSave = useCallback((keyName = 'flowData') => {
+          const sanitizedKeyName = sanitizeKeyName(keyName);
           const data = {
             nodes: nodes,
             edges: edges
           };
-          localStorage.setItem('flowData', JSON.stringify(data));
+          localStorage.setItem(sanitizedKeyName, JSON.stringify(data));
         }, [nodes, edges]);
 
-        // Load nodes and edges from localStorage
-        const handleLoad = useCallback(() => {
+        // Function to load data from localStorage
+        const handleLocalStorageLoad = useCallback((keyName = 'flowData') => {
           setSelectedNodeId(null);
           setSelectedEdgeId(null);
-          const data = JSON.parse(localStorage.getItem('flowData'));
+          const sanitizedKeyName = sanitizeKeyName(keyName);
+          const data = JSON.parse(localStorage.getItem(sanitizedKeyName));
           if (data) {
             setNodes(data.nodes);
             setEdges(data.edges);
           }
         }, []);
+
+        // Function to save data to the server
+        const handleServerSave = useCallback((keyName = 'flowData') => {
+          const data = JSON.stringify({
+            nodes: nodes,
+            edges: edges
+          });
+          fetch('saveData.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `data=${encodeURIComponent(data)}&fileName=${keyName}`
+          })
+            .then(response => response.json())
+            .then(result => console.log('Server save result:', result))
+            .catch(error => console.error('Error saving data to server:', error));
+        }, [nodes, edges]);
+
+        // Function to load data from the server
+        const handleServerLoad = useCallback((keyName = 'flowData') => {
+          fetch(`loadData.php?fileName=${keyName}`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.nodes && data.edges) {
+                setNodes(data.nodes);
+                setEdges(data.edges);
+              } else {
+                console.error('Error loading data:', data.error);
+              }
+            })
+            .catch(error => console.error('Error loading data from server:', error));
+        }, []);
+
+        // Modified handleSave using handleLocalStorageSave
+        const handleSave = useCallback(() => {
+          const url = window.location.href;
+          if (url.includes('github') || url.includes('file')) {
+            handleLocalStorageSave(dataKey);
+          } else {
+            handleServerSave(dataKey);
+          }
+        }, [handleLocalStorageSave, handleServerSave, dataKey]);
+
+        const handleLoad = useCallback(() => {
+          const url = window.location.href;
+          if (url.includes('github') || url.includes('file')) {
+            handleLocalStorageLoad(dataKey);
+          } else {
+            handleServerLoad(dataKey);
+          }
+        }, [handleLocalStorageLoad, handleServerLoad, dataKey]);
 
         async function fetchChatCompletion(openaiApiKey, prompt, model = 'gpt-3.5-turbo', mode = 'answer', maxTokens = 3072, temperature = 1) {
           const url = "https://api.openai.com/v1/chat/completions";
@@ -446,15 +546,7 @@
             return;
           }
 
-          if (!apiKey) {
-            showTimedModal('Please enter an API key.', 3000);
-            return;
-          }
 
-          if( (['brainstorm', 'knowledge graph'].includes(mode) && (['gpt-3.5-turbo-16k', 'gpt-4'].includes(model))) ) {
-            showTimedModal('Mode is not supported by the ai model.', 5000);
-            return; 
-          }
 
           const selectedNode = nodes.find(n => n.id === selectedNodeId);
           const inputEdges = edges.filter(e => e.target === selectedNodeId);
@@ -492,6 +584,13 @@
 
               if (incomingEdge && incomingEdge.length != 0) {
 
+                if (Object.hasOwn(incomingEdge[0], 'label') && incomingEdge[0].label !== "") {
+                  prompt.unshift({
+                    "role": currentNode.data.role,
+                    "content": incomingEdge[0].label
+                  });
+                }
+
                 if (incomingEdge.length > 1) {
                   showTimedModal('Please ensure that in "Full Path" mode every node in this path has only one parent.', 5000);
                   return;
@@ -507,6 +606,16 @@
               "role": "user",
               "content": selectedNode.data.label
             },)
+          }
+
+          if (!apiKey) {
+            showTimedModal('Please enter an API key.', 3000);
+            return;
+          }
+
+          if ((['brainstorm', 'knowledge graph'].includes(mode) && (['gpt-3.5-turbo-16k', 'gpt-4'].includes(model)))) {
+            showTimedModal('Mode is not supported by the ai model.', 5000);
+            return;
           }
 
           const response = await fetchChatCompletion(apiKey, prompt, model, mode);
@@ -565,11 +674,17 @@
             setNodes(prevNodes => prevNodes.filter(node => node.id !== selectedNodeId));
             setEdges(prevEdges => prevEdges.filter(edge => edge.source !== selectedNodeId && edge.target !== selectedNodeId));
             setSelectedNodeId(null); // Clear selection
+          } else if (selectedEdgeId) {
+            // Remove the selected edge
+            setEdges(prevEdges => prevEdges.filter(edge => edge.id !== selectedEdgeId));
+            setSelectedEdgeId(null); // Clear selection of edge
           } else {
+            // If nothing is selected, reset nodes and edges
             setEdges([]);
             setNodes([]);
           }
-        }, [selectedNodeId]);
+        }, [selectedNodeId, selectedEdgeId]); // include selectedEdgeId in the dependency array
+
 
         const handleKeyDown = useCallback((event) => {
           if (event.keyCode === 46) {
@@ -707,6 +822,12 @@
               React.createElement('option', { value: "straight" }, 'straight')
             ),
             React.createElement('input', {
+              type: 'text',
+              placeholder: 'flowData',
+              value: dataKey,
+              onChange: (e) => setDataKey(e.target.value)
+            }),
+            React.createElement('input', {
               type: 'password',
               placeholder: 'API Key',
               value: apiKey,
@@ -729,7 +850,12 @@
       }
 
       const root = createRoot(document.getElementById('app'));
-      root.render(React.createElement(SimpleFlowComponent));
+      if (App) {
+        root.render(React.createElement(App, null));
+      } else {
+        console.error('App component is undefined');
+      }
+
     });
   </script>
 </body>
