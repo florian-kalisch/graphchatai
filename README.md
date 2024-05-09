@@ -20,7 +20,7 @@ GraphChatAI aims to overcome the limitations of linear chat interfaces which can
      - **Node Selected:** Deletes the selected node and any edges connected to it. This helps in managing and refining the graph's structure.
 
 4. **Save and Load Icons (Local Storage Interaction)**
-   - These icons facilitate the saving and loading of the graph’s state to and from the browser’s local storage. This feature ensures that users can preserve their work and return to it later without loss of data.
+   - These icons facilitate the saving and loading of the graph’s state to and from the browser’s local storage when the file is served through github or through file protocol locally. When served through custom web server the data is saved to file through saveData.php and loaded with loadData.php. The php save and load should not be used in production (needs security hardening and saved data has excess rights) in the current state (this just fits my current need). This feature ensures that users can preserve their work and return to it later without loss of data. The key under under which the data will be saved and loaded is per default flowData and can be configured through the input field.
 
 5. **Graph/Layout Icon (Adjust Graph Layout)**
    - Users can switch the graph layout between vertical and horizontal orientations. This flexibility allows users to view their graph in a manner that best suits their workflow or preference.
