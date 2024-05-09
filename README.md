@@ -1,6 +1,8 @@
 ### GraphChatAI
 
-![graphchatai](https://github.com/florian-kalisch/graphchatai/assets/5501881/1e207b95-ba82-4ad6-9e5d-3f4be1d7a07e)
+![graphchatai](https://github.com/florian-kalisch/graphchatai/assets/5501881/22e04ebb-892e-48ed-bb91-dbf7f3c92575)
+
+Notice how "No Node Input" is selected in the entire example from the gif and the context window does not require any prior messages. If "Full Path" was selected, as would be the case in a normal linear chat, the previous two prompts would be saved in the context window.
 
 #### Introduction
 GraphChatAI is a versatile tool designed to interact with the OpenAI™ API in a non-linear and graph-based manner. This tool enhances creative brainstorming, structured knowledge exploration, and complex conversation management by leveraging a graph interface to control and visualize the flow of AI-generated content.
