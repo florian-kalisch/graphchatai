@@ -811,10 +811,11 @@
               React.createElement('option', { value: 3 }, '3 Answers')
             ),
             React.createElement('select', { value: model, onChange: (e) => setModel(e.target.value) },
-              React.createElement('option', { value: 'gpt-4' }, 'GPT-4'),
-              React.createElement('option', { value: 'gpt-4-turbo' }, 'GPT-4 Turbo'),
               React.createElement('option', { value: 'gpt-3.5-turbo' }, 'GPT-3.5 Turbo'),
-              React.createElement('option', { value: 'gpt-3.5-turbo-16k' }, 'GPT-3.5 Turbo 16k')
+              React.createElement('option', { value: 'gpt-3.5-turbo-16k' }, 'GPT-3.5 Turbo 16k'),  
+              React.createElement('option', { value: 'gpt-4' }, 'GPT-4'),
+              React.createElement('option', { value: 'gpt-4o' }, 'gpt-4o'),
+              React.createElement('option', { value: 'gpt-4-turbo' }, 'GPT-4 Turbo')
             ),
             React.createElement('select', { value: edgeType, onChange: (e) => setEdgeType(e.target.value) },
               React.createElement('option', { value: "default" }, 'default'),
